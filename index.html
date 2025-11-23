@@ -265,21 +265,21 @@
         
         document.body.appendChild(renderer.domElement);
         
-        // 🚗 ULTRA NET MIRROR - Yazılar okunsun!
-        const mirrorRes = isMobile && !isTablet ? 
-            (screenSize <= 800 ? 256 : 384) :  // 📱 192→256, 256→384 (2x!)
-            (isTablet ? 512 : 512);
+        // 🚗 ULTRA NET MIRROR - Yazılar mükemmel okunsun!
+        const mirrorRes = isPhone ? 
+            (screenSize <= 800 ? 384 : 512) :  // 📱 256→384, 384→512 (Daha net yazılar!)
+            (isTablet ? 768 : 1024);  // Tablet/Desktop daha yüksek!
         
         console.log('🪞 Mirror Resolution:', mirrorRes);
         
         const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(mirrorRes, {
-            format: THREE.RGBAFormat,  // RGB→RGBA (daha net!)
+            format: THREE.RGBAFormat,
             generateMipmaps: true,
             minFilter: THREE.LinearMipmapLinearFilter,
             magFilter: THREE.LinearFilter,
             encoding: THREE.sRGBEncoding,
             type: THREE.UnsignedByteType,
-            anisotropy: isMobile ? 4 : 8  // 📱 2→4 (çok daha keskin!)
+            anisotropy: renderer.capabilities.getMaxAnisotropy()  // Maksimum keskinlik!
         });
         const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget);
         scene.add(cubeCamera);
@@ -1681,17 +1681,18 @@
                             materials.forEach(mat => {
                                 
                                 if (isRoad) {
-                                    // 🛣️ YOL - SİYAH FULL METALİK!
-                                    mat.color = new THREE.Color(0x000000);  // ⚫ SİYAH!
-                                    mat.metalness = 1.0;  // FULL METALİK!
-                                    mat.roughness = 0.1;  // Az roughness - parlak!
+                                    // 🛣️ YOL - AYNA GİBİ METALİK SİYAH/KOYU GRİ!
+                                    mat.color = new THREE.Color(0x1a1a1a);  // ⚫ KOYU GRİ (ayna gibi!)
+                                    mat.metalness = 1.0;  // TAM METALİK!
+                                    mat.roughness = 0.0;  // SIFIR roughness = tam ayna!
+                                    mat.reflectivity = 1.0;  // Maksimum yansıma!
                                     
                                     if (!isPhone && roadCubeRenderTarget) {
-                                        // ✅ TABLET/DESKTOP: Skybox yansıması!
+                                        // ✅ TABLET/DESKTOP: Skybox yansıması - AYNA!
                                         mat.envMap = roadCubeRenderTarget.texture;
-                                        mat.envMapIntensity = 1.5;
+                                        mat.envMapIntensity = 2.0;  // Güçlü yansıma!
                                     } else {
-                                        // ✅ TELEFON: envMap yok!
+                                        // ✅ TELEFON: envMap yok ama TAM METALİK!
                                         mat.envMap = null;
                                         mat.envMapIntensity = 0;
                                     }
@@ -3000,19 +3001,32 @@
         // 📱 ULTRA GÜÇLÜ ORİENTATION CHANGE - Yatay/dikey geçişte ÇÖKME YOK!
         let lastOrientation = window.orientation || 0;
         let orientationTimeout;
+        let isOrientationChanging = false;  // ✅ Flag to prevent multiple triggers!
         
         const handleOrientationChange = () => {
+            if (isOrientationChanging) return;  // ✅ Zaten değişiyor, bekle!
+            
             const newOrientation = window.orientation || 0;
             if (newOrientation === lastOrientation) return;
             
             console.log('🔄 Orientation changed:', lastOrientation, '→', newOrientation);
             lastOrientation = newOrientation;
+            isOrientationChanging = true;  // ✅ Lock!
+            
+            // ⏸️ Animasyon DURDUR!
+            cancelAnimationFrame(animationId);
             
             // Renderer boyutunu güncelle
             setTimeout(() => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // 📱 Pixel ratio yeniden hesapla!
+                const newPixelRatio = isPhone ? 
+                    (isLowEnd ? 0.6 : 0.75) : 
+                    (isTablet ? 0.85 : Math.min(window.devicePixelRatio, 1.5));
+                renderer.setPixelRatio(newPixelRatio);
                 
                 // 📱 AGRESIF HAFIZA TEMİZLİĞİ!
                 if (isMobile) {
@@ -3053,6 +3067,16 @@
                         window.gc();
                     }
                 }
+                
+                // ✅ Animasyonu yeniden başlat!
+                setTimeout(() => {
+                    isOrientationChanging = false;  // ✅ Unlock!
+                    if (!animationId) {
+                        animate();  // Restart animation loop!
+                    }
+                    console.log('✅ Orientation change complete, animation resumed!');
+                }, 300);
+                
             }, 100);
         };
         
@@ -3195,8 +3219,10 @@
         }
 
         let frameCounter = 0;
+        let animationId = null;  // ✅ Track animation loop!
+        
         function animate() {
-            requestAnimationFrame(animate);
+            animationId = requestAnimationFrame(animate);
             frameCounter++;
             
             // 📱 Hafıza kontrolü frekansı - cihaza göre!
@@ -3223,8 +3249,11 @@
                 obj.mesh.rotation.y += obj.rotationSpeed;
             });
             
-            // 🪞 Mirror update - Cihaza göre optimize!
-            const mirrorUpdateFreq = isTablet ? 6 : (isLowEnd ? 12 : 9);
+            // 🪞 Mirror update - Kalite artışı, performans korunuyor!
+            const mirrorUpdateFreq = isPhone ? 
+                (isLowEnd ? 10 : 8) :  // Phone: Daha sık update = daha net!
+                (isTablet ? 5 : 4);     // Tablet/Desktop: Çok sık!
+            
             if (car && mirrorMeshes.length > 0 && frameCounter % mirrorUpdateFreq === 0) {
                 mirrorMeshes.forEach(mesh => mesh.visible = false);
                 
