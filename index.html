@@ -30,12 +30,11 @@
             line-height: 1.5;
         }
         
-        /* 📱 MOBİL KONTROLLER - VARSAYILAN GİZLİ! */
+        /* 📱 MOBİL KONTROLLER */
         .mobile-controls {
             position: fixed;
             pointer-events: none;
             z-index: 100;
-            display: none; /* ✅ VARSAYILAN GİZLİ! */
         }
         
         /* 📷 CAMERA MODE BUTTON - SOL ÜST */
@@ -50,7 +49,7 @@
             border-radius: 10px;
             backdrop-filter: blur(10px);
             pointer-events: auto;
-            display: none; /* ✅ VARSAYILAN GİZLİ! */
+            display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
@@ -72,7 +71,6 @@
             width: 140px;
             height: 140px;
             pointer-events: auto;
-            display: none; /* ✅ VARSAYILAN GİZLİ! */
         }
         .steering-container {
             position: relative;
@@ -116,7 +114,6 @@
             width: 140px;
             height: 140px;
             pointer-events: auto;
-            display: none; /* ✅ VARSAYILAN GİZLİ! */
         }
         .accel-container {
             position: relative;
@@ -182,13 +179,9 @@
             border-color: rgba(100, 255, 100, 0.5);
         }
         
-        /* ✅ SADECE MOBİLDE GÖSTER! */
-        @media (max-width: 1023px), (hover: none), (pointer: coarse) {
-            .mobile-controls {
-                display: block !important;
-            }
+        @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
             #cameraBtn, #steeringPad, #accelPad {
-                display: flex !important;
+                display: none;
             }
         }
     </style>
@@ -843,10 +836,9 @@
                     activeTextureIndices.add('u' + index);  // 📱 Track aktif texture!
                     loadedUniverseCount++;
                     
-                    // 📱 MOBİL: 1+1 texture ile başla! Desktop: 2+2
+                    // 📱 Texture başlatma - TELEFONDA POUR BEKLEME!
                     const minStart = isMobile ? 1 : 2;
-                    // ✅ TELEFONDA POUR YOK! Pour check'i sadece tablet/desktop için!
-                    const pourReady = isPhone ? true : (loadedPourCount >= 1);
+                    const pourReady = isPhone ? true : (loadedPourCount >= 1);  // ✅ KEY FIX!
                     
                     if (loadedUniverseCount >= minStart && pourReady && !texturesReady) {
                         texturesReady = true;
@@ -862,14 +854,13 @@
                 });
             });
             
-            // 🎲 MASTER QUEUE'dan ilk pour texture(lar) al! (✅ SADECE TABLET/DESKTOP!)
-            if (!isPhone) {
-                const firstPourIndices = isMobile ? 
-                    [masterPourQueue[0]] :  // 📱 Tablet: Sadece 1!
-                    [masterPourQueue[0], masterPourQueue[1]];  // Desktop: 2
-                pourQueuePosition = firstPourIndices.length;
-                
-                firstPourIndices.forEach((index, i) => {
+            // 🎲 MASTER QUEUE'dan ilk pour texture(lar) al!
+            const firstPourIndices = isMobile ? 
+                [masterPourQueue[0]] :  // 📱 Mobil: Sadece 1!
+                [masterPourQueue[0], masterPourQueue[1]];  // Desktop: 2
+            pourQueuePosition = firstPourIndices.length;
+            
+            firstPourIndices.forEach((index, i) => {
                 textureLoader.load(POUR_TEXTURE_URLS[index], (texture) => {
                     // 📱 MİNİMUM RESIZE - Maksimum netlik!
                     if (isMobile && !isTablet) {
@@ -1091,16 +1082,12 @@
                     pourTextures[index] = texture;
                     loadedPourCount++;
                 });
-            }  // ✅ END: if (!isPhone)
+            }
         }
-    }
 
         function checkFluidTexturesLoaded() {
-            // ✅ TELEFONDA POUR YOK!
-            const pourCheck = isPhone ? true : (loadedPourCount >= POUR_TEXTURE_URLS.length);
-            
             if (loadedUniverseCount >= UNIVERSE_TEXTURE_URLS.length && 
-                pourCheck && 
+                loadedPourCount >= POUR_TEXTURE_URLS.length && 
                 !texturesReady) {
                 texturesReady = true;
                 createFluidSkybox();
@@ -1145,9 +1132,6 @@
         }
         
         function getRandomPourIndex() {
-            // ✅ TELEFONDA POUR YOK!
-            if (isPhone || masterPourQueue.length === 0) return 0;
-            
             // 🎯 MASTER QUEUE'dan sıradaki pour texture'ı al!
             let nextIndex = masterPourQueue[pourQueuePosition];
             
@@ -1184,8 +1168,8 @@
                 masterUniverseQueue[0] : 
                 masterUniverseQueue[1];
             
-            // 📱 İlk pour texture (✅ TELEFONDA YOK!)
-            currentPourIndex = isPhone ? 0 : (masterPourQueue[0] || 0);
+            // 📱 İlk pour texture
+            currentPourIndex = masterPourQueue[0];
 
             const skyboxGeometry = new THREE.SphereGeometry(
                 3000, 
@@ -1201,7 +1185,7 @@
                 uniforms: {
                     uTexture: { value: universeTextures[currentUniverseIndex] },
                     uNextTexture: { value: universeTextures[nextUniverseIndex] },
-                    uPourTexture: { value: isPhone ? null : pourTextures[currentPourIndex] },  // ✅ TELEFONDA NULL!
+                    uPourTexture: { value: pourTextures[currentPourIndex] },
                     uTime: { value: 0 },
                     uFlowSpeed: { value: flowSpeed },
                     uWaveAmplitude: { value: waveAmplitude },
@@ -1697,45 +1681,19 @@
                             materials.forEach(mat => {
                                 
                                 if (isRoad) {
-                                    // 🛣️ YOL MATERIAL - CİHAZA GÖRE!
-                                    if (isPhone) {
-                                        // ✅ TELEFON: Basit material - envMap YOK!
-                                        mat.metalness = 0.3;
-                                        mat.roughness = 0.7;
+                                    // 🛣️ YOL - SİYAH FULL METALİK!
+                                    mat.color = new THREE.Color(0x000000);  // ⚫ SİYAH!
+                                    mat.metalness = 1.0;  // FULL METALİK!
+                                    mat.roughness = 0.1;  // Az roughness - parlak!
+                                    
+                                    if (!isPhone && roadCubeRenderTarget) {
+                                        // ✅ TABLET/DESKTOP: Skybox yansıması!
+                                        mat.envMap = roadCubeRenderTarget.texture;
+                                        mat.envMapIntensity = 1.5;
+                                    } else {
+                                        // ✅ TELEFON: envMap yok!
                                         mat.envMap = null;
                                         mat.envMapIntensity = 0;
-                                        mat.clearcoat = 0;
-                                        mat.clearcoatRoughness = 0;
-                                    } else {
-                                        // ✅ TABLET/DESKTOP: ULTRA SHARP MIRROR!
-                                        mat.metalness = 1.0;          // TAM METALİK = daha keskin!
-                                        mat.roughness = 0.0;          // SIFIR roughness = maksimum netlik!
-                                        mat.ior = 2.417;              // CAM IOR
-                                        mat.reflectivity = 1.0;       // maksimum yansıma!
-                                        
-                                        mat.clearcoat = 1.0;          // tam parlak!
-                                        mat.clearcoatRoughness = 0.0; // kristal berraklık!
-                                        
-                                        // 🛣️ ULTRA GÜÇLÜ YANSIMA!
-                                        mat.envMap = roadCubeRenderTarget.texture;
-                                        mat.envMapIntensity = 7.0;    // daha güçlü!
-                                        
-                                        // 🔥 ULTRA HIGH QUALITY FILTERING + SHARPNESS!
-                                        if (mat.map) {
-                                            mat.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                                            mat.map.minFilter = THREE.LinearMipmapLinearFilter;
-                                            mat.map.magFilter = THREE.LinearFilter;
-                                            mat.map.generateMipmaps = true;
-                                        }
-                                        
-                                        // 🔥 envMap ULTRA SHARP QUALITY!
-                                        if (roadCubeRenderTarget.texture) {
-                                            roadCubeRenderTarget.texture.minFilter = THREE.LinearMipmapLinearFilter;
-                                            roadCubeRenderTarget.texture.magFilter = THREE.LinearFilter;
-                                            roadCubeRenderTarget.texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                                            roadCubeRenderTarget.texture.generateMipmaps = true;
-                                            roadCubeRenderTarget.texture.needsUpdate = true;
-                                        }
                                     }
                                     
                                 } else {
