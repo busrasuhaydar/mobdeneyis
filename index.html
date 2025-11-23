@@ -265,10 +265,10 @@
         
         document.body.appendChild(renderer.domElement);
         
-        // 🚗 ULTRA NET MIRROR - Yazılar mükemmel okunsun!
+        // 🚗 MIRROR - ORİJİNAL AYARLAR + YAZI KALİTESİ ARTIRILDI!
         const mirrorRes = isPhone ? 
-            (screenSize <= 800 ? 384 : 512) :  // 📱 256→384, 384→512 (Daha net yazılar!)
-            (isTablet ? 768 : 1024);  // Tablet/Desktop daha yüksek!
+            (screenSize <= 800 ? 256 : 384) :  // 📱 Orijinal değerler!
+            (isTablet ? 512 : 1024);  // Desktop biraz daha yüksek kalite için
         
         console.log('🪞 Mirror Resolution:', mirrorRes);
         
@@ -279,7 +279,7 @@
             magFilter: THREE.LinearFilter,
             encoding: THREE.sRGBEncoding,
             type: THREE.UnsignedByteType,
-            anisotropy: renderer.capabilities.getMaxAnisotropy()  // Maksimum keskinlik!
+            anisotropy: isPhone ? 8 : 16  // ✅ Daha yüksek anisotropy = daha net yazı!
         });
         const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget);
         scene.add(cubeCamera);
@@ -1681,8 +1681,8 @@
                             materials.forEach(mat => {
                                 
                                 if (isRoad) {
-                                    // 🛣️ YOL - AYNA GİBİ METALİK SİYAH/KOYU GRİ!
-                                    mat.color = new THREE.Color(0x1a1a1a);  // ⚫ KOYU GRİ (ayna gibi!)
+                                    // 🛣️ YOL - KOYU GRİ AYNA GİBİ METALİK! (%15 daha açık)
+                                    mat.color = new THREE.Color(0x2d2d2d);  // ⚫ KOYU GRİ (%15 daha açık!)
                                     mat.metalness = 1.0;  // TAM METALİK!
                                     mat.roughness = 0.0;  // SIFIR roughness = tam ayna!
                                     mat.reflectivity = 1.0;  // Maksimum yansıma!
@@ -1959,10 +1959,10 @@
                 const usableWidth = width - (paddingX * 2);
                 const usableHeight = height - (paddingY * 2);
                 
-                // 📱 MOBİLDE YAZILARI BÜYÜT - 2X!
-                const mobileFontMultiplier = (isMobile && !isTablet) ? 2.0 : 1.0;
+                // 📱 MOBİLDE YAZILARI BÜYÜT - 2X! + %10 EKSTRA BÜYÜTME!
+                const mobileFontMultiplier = (isMobile && !isTablet) ? 2.2 : 1.1;  // ✅ %10 daha büyük!
                 
-                // BÜYÜK BAŞLANGIÇ FONTLARI!
+                // BÜYÜK BAŞLANGIÇ FONTLARI - %10 DAHA BÜYÜK!
                 let fontSize;
                 if (lineCount <= 2) fontSize = 380 * mobileFontMultiplier;
                 else if (lineCount <= 3) fontSize = 340 * mobileFontMultiplier;
@@ -2048,10 +2048,10 @@
                 const usableWidth = width - (paddingX * 2);
                 const usableHeight = height - (paddingY * 2);
                 
-                // 📱 MOBİLDE YAZILARI BÜYÜT - 2X!
-                const mobileFontMultiplier = (isMobile && !isTablet) ? 2.0 : 1.0;
+                // 📱 MOBİLDE YAZILARI BÜYÜT - 2X! + %10 EKSTRA BÜYÜTME!
+                const mobileFontMultiplier = (isMobile && !isTablet) ? 2.2 : 1.1;  // ✅ %10 daha büyük!
                 
-                // BÜYÜK BAŞLANGIÇ FONTLARI!
+                // BÜYÜK BAŞLANGIÇ FONTLARI - %10 DAHA BÜYÜK!
                 let fontSize;
                 if (lineCount <= 2) fontSize = 380 * mobileFontMultiplier;
                 else if (lineCount <= 3) fontSize = 340 * mobileFontMultiplier;
@@ -2998,91 +2998,38 @@
             }, 250); // 250ms throttle
         });
         
-        // 📱 ULTRA GÜÇLÜ ORİENTATION CHANGE - Yatay/dikey geçişte ÇÖKME YOK!
-        let lastOrientation = window.orientation || 0;
-        let orientationTimeout;
-        let isOrientationChanging = false;  // ✅ Flag to prevent multiple triggers!
+        // 📱 YATAY MOD - BASİT VE GÜVENLİ ÇÖZÜM!
+        let isHandlingOrientation = false;
         
-        const handleOrientationChange = () => {
-            if (isOrientationChanging) return;  // ✅ Zaten değişiyor, bekle!
+        const safeOrientationHandler = () => {
+            if (isHandlingOrientation) return;  // Zaten işleniyor!
+            isHandlingOrientation = true;
             
-            const newOrientation = window.orientation || 0;
-            if (newOrientation === lastOrientation) return;
+            console.log('🔄 Orientation changing...');
             
-            console.log('🔄 Orientation changed:', lastOrientation, '→', newOrientation);
-            lastOrientation = newOrientation;
-            isOrientationChanging = true;  // ✅ Lock!
-            
-            // ⏸️ Animasyon DURDUR!
-            cancelAnimationFrame(animationId);
-            
-            // Renderer boyutunu güncelle
+            // Basit ve güvenli yeniden boyutlandırma
             setTimeout(() => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                
-                // 📱 Pixel ratio yeniden hesapla!
-                const newPixelRatio = isPhone ? 
-                    (isLowEnd ? 0.6 : 0.75) : 
-                    (isTablet ? 0.85 : Math.min(window.devicePixelRatio, 1.5));
-                renderer.setPixelRatio(newPixelRatio);
-                
-                // 📱 AGRESIF HAFIZA TEMİZLİĞİ!
-                if (isMobile) {
-                    console.log('🧹 Aggressive memory cleanup...');
+                try {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
                     
-                    // Renderer temizle
-                    if (renderer.info) {
-                        renderer.info.reset();
-                    }
-                    
-                    // Sadece CURRENT ve NEXT texture kalsın - diğer HERŞEYİ temizle!
-                    const keysToRemove = [];
-                    activeTextureIndices.forEach(key => {
-                        const type = key[0];
-                        const index = parseInt(key.substring(1));
-                        
-                        if (type === 'u' && index !== currentUniverseIndex && index !== nextUniverseIndex) {
-                            if (universeTextures[index]) {
-                                universeTextures[index].dispose();
-                                delete universeTextures[index];
-                                keysToRemove.push(key);
-                            }
-                        } else if (type === 'p' && index !== currentPourIndex) {
-                            if (pourTextures[index]) {
-                                pourTextures[index].dispose();
-                                delete pourTextures[index];
-                                keysToRemove.push(key);
-                            }
-                        }
-                    });
-                    
-                    keysToRemove.forEach(key => activeTextureIndices.delete(key));
-                    
-                    console.log(`🧹 Cleaned ${keysToRemove.length} textures, ${activeTextureIndices.size} remaining`);
-                    
-                    // Garbage collection tetikle
-                    if (window.gc) {
-                        window.gc();
-                    }
+                    console.log('✅ Orientation handled successfully!');
+                } catch (error) {
+                    console.error('❌ Orientation error:', error);
                 }
                 
-                // ✅ Animasyonu yeniden başlat!
-                setTimeout(() => {
-                    isOrientationChanging = false;  // ✅ Unlock!
-                    if (!animationId) {
-                        animate();  // Restart animation loop!
-                    }
-                    console.log('✅ Orientation change complete, animation resumed!');
-                }, 300);
-                
-            }, 100);
+                isHandlingOrientation = false;
+            }, 200);
         };
         
-        window.addEventListener('orientationchange', () => {
-            clearTimeout(orientationTimeout);
-            orientationTimeout = setTimeout(handleOrientationChange, 100);
+        // Hem orientationchange hem resize'ı dinle
+        window.addEventListener('orientationchange', safeOrientationHandler);
+        window.addEventListener('resize', () => {
+            if (Math.abs(window.orientation || 0) % 90 === 0) {
+                // Bu bir orientation change
+                safeOrientationHandler();
+            }
         });
         
         // 📱 SAYFA KAPANIRKEN TEMİZLİK
@@ -3249,10 +3196,8 @@
                 obj.mesh.rotation.y += obj.rotationSpeed;
             });
             
-            // 🪞 Mirror update - Kalite artışı, performans korunuyor!
-            const mirrorUpdateFreq = isPhone ? 
-                (isLowEnd ? 10 : 8) :  // Phone: Daha sık update = daha net!
-                (isTablet ? 5 : 4);     // Tablet/Desktop: Çok sık!
+            // 🪞 Mirror update - ORİJİNAL AYARLAR!
+            const mirrorUpdateFreq = isTablet ? 6 : (isLowEnd ? 12 : 9);
             
             if (car && mirrorMeshes.length > 0 && frameCounter % mirrorUpdateFreq === 0) {
                 mirrorMeshes.forEach(mesh => mesh.visible = false);
