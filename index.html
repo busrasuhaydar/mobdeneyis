@@ -244,10 +244,11 @@
             // KATMAN 2: Orta mesafe
             // KATMAN 3: Uzak plan
             
+            // 📱 TELEFON OPTİMİZASYONU: Parçacık sayısı azaltıldı ama görünürlük korundu!
             const layerConfigs = [
                 {
                     name: 'EXTREME_CLOSE',
-                    count: isPhone ? 80 : (isTablet ? 120 : 180),
+                    count: isPhone ? 60 : (isTablet ? 120 : 180),  // 📱 80→60 (optimize!)
                     minDist: 2,      // Kameraya 2-8 birim mesafe (ÇOK YAKIN!)
                     maxDist: 8,
                     minLength: 2.5,  // Çok uzun damlalar
@@ -258,7 +259,7 @@
                 },
                 {
                     name: 'CLOSE',
-                    count: isPhone ? 150 : (isTablet ? 250 : 400),
+                    count: isPhone ? 120 : (isTablet ? 250 : 400),  // 📱 150→120 (optimize!)
                     minDist: 8,      // 8-25 birim
                     maxDist: 25,
                     minLength: 1.5,
@@ -269,7 +270,7 @@
                 },
                 {
                     name: 'MEDIUM',
-                    count: isPhone ? 200 : (isTablet ? 350 : 600),
+                    count: isPhone ? 150 : (isTablet ? 350 : 600),  // 📱 200→150 (optimize!)
                     minDist: 25,     // 25-80 birim
                     maxDist: 80,
                     minLength: 1.0,
@@ -280,7 +281,7 @@
                 },
                 {
                     name: 'FAR',
-                    count: isPhone ? 150 : (isTablet ? 250 : 400),
+                    count: isPhone ? 100 : (isTablet ? 250 : 400),  // 📱 150→100 (optimize!)
                     minDist: 80,     // 80-150 birim (uzak)
                     maxDist: 150,
                     minLength: 0.5,
@@ -346,6 +347,8 @@
                 
                 const mesh = new THREE.LineSegments(geometry, material);
                 mesh.renderOrder = config.name === 'EXTREME_CLOSE' ? 999 : 0; // En önde render et!
+                // 📱 TELEFONDA frustumCulled = false (her zaman görünsün!)
+                mesh.frustumCulled = isPhone ? false : true;
                 
                 layers.push({
                     mesh: mesh,
@@ -358,7 +361,12 @@
         }
 
         function updateRain() {
-            if (!rainLayers.length || !rainActive || cameraMode !== 1 || !car || !camera) return;
+            // 📱 TELEFONDA: rainActive kontrolü YOK! Her zaman çalışsın!
+            // 📱 TELEFONDA: cameraMode kontrolü YOK! Her modda görünsün!
+            if (!rainLayers.length || !car || !camera) return;
+            
+            // 📱 TELEFON DEĞİLSE orijinal kontroller geçerli
+            if (!isPhone && (!rainActive || cameraMode !== 1)) return;
             
             const carPos = car.position;
             const cameraWorldPos = new THREE.Vector3();
@@ -447,10 +455,17 @@
         // 🌧️ KATMANLI YAĞMUR SİSTEMİNİ BAŞLAT
         rainLayers = createRainSystem();
         rainLayers.forEach(layer => {
-            layer.mesh.visible = false;
+            // 📱 TELEFONDA yağmur başlangıçta AÇIK, diğerlerinde kapalı
+            layer.mesh.visible = isPhone ? true : false;
             scene.add(layer.mesh);
         });
-        console.log(`🌧️ ${rainLayers.length} katmanlı yağmur sistemi hazır!`);
+        // 📱 TELEFONDA rainActive = true (her zaman yağıyor!)
+        if (isPhone) {
+            rainActive = true;
+            console.log(`🌧️ TELEFON: ${rainLayers.length} katmanlı yağmur AKTİF! (${60+120+150+100} parçacık)`);
+        } else {
+            console.log(`🌧️ ${rainLayers.length} katmanlı yağmur sistemi hazır!`);
+        }
         
         // 🚗 MIRROR - ORİJİNAL AYARLAR + YAZI KALİTESİ ARTIRILDI!
         const mirrorRes = isPhone ? 
